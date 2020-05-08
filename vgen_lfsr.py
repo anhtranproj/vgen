@@ -22,16 +22,13 @@
 # SOFTWARE.
 #==============================================================================
 """
-This script will generate a Verilog file that parallelly computes all bits of 
-a pseudo-random output for an input seed, accordingly a LFSR generator polynomial.
+This script will generate a Verilog LFSR module accordingly to a generator polynomial.
 
-To generate a good pseudo random, it is recommended to use a maxium-cycle LFSR polynomial.
-The list of maximum-cycle LFSR can be found here: 
+It is recommended to use a maxium-cycle LFSR polynomial that can be found here:
 https://web.archive.org/web/20161007061934/http://courses.cse.tamu.edu/csce680/walker/lfsr_table.pdf
 """
 
 import argparse
-
 
 def parse_polynomial(gen_poly):
     """ Extract indexes of bit one in the binary representation of the generation polynomial.
@@ -63,36 +60,7 @@ def parse_polynomial(gen_poly):
     return lfsr_len, one_indices    
     
 
-def xor_two_sets(set1, set2):
-    """ merge and remove the same elements if any from 2 sets
-    """
-    
-    return (set.union(set1, set2) - set.intersection(set1, set2))
-
-def gen_random(lfsr_len, one_indices, rand_wd):
-    """ generate a list of sets where each set consists of the indexes of LFSR elements going to the XOR taps
-    """
-    
-    rand_out = []
-    
-    cur_sets = [{ii} for ii in range(lfsr_len)]
-    
-    for ww in range(rand_wd):
-        xor_out = set()
-        for oo in range(len(one_indices)):
-            xor_out = xor_two_sets(xor_out, cur_sets[one_indices[oo]])
-        
-        #print(xor_out)
-        
-        for ii in range(lfsr_len-1,0,-1):
-            cur_sets[ii] = cur_sets[ii-1]
-        
-        cur_sets[0] = xor_out    
-        rand_out.append(xor_out)
-     
-    return rand_out
-     
-def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
+def gen_verilog(lfsr_len, one_indices, prefix):
     """ generate the Verilog module file
     """
     
@@ -107,7 +75,7 @@ def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
     
     poly_str += '1' # implicit one
     
-    filename = "%s_rand_%dx%d_%s.v" % (prefix, lfsr_len, len(rand_out), bin_str)
+    filename = "%s_lfsr_%d_%s.v" % (prefix, lfsr_len, bin_str)
     
     f=open(filename, 'w')
     
@@ -116,21 +84,35 @@ def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
     code = "/"*80 + "\n"
     code += "///// Generated code. Don't modify! \n"
     code += "///// Author: Anh Tran (Andrew) \n"
-    code += "///// This module parallelly computes a %d-bit pseudo random output from %d-bit input seed \n" % (len(rand_out), lfsr_len)
+    code += "///// This module computes %d-bit LFSR bits from an input seed \n" % (lfsr_len)
     code += "///// based on the LFSR polynomial: %s \n" % (poly_str)
     code += "/"*80 + "\n"
     
-    code += "module %s_rand_%dx%d_%s (\n" % (prefix, lfsr_len, len(rand_out), bin_str)
+    code += "module %s_lfsr_%d_%s (\n" % (prefix, lfsr_len, bin_str)
+    code += "%sinput    clk,\n" % (indent)
+    code += "%sinput    rst,\n\n" % (indent)
+    
     code += "%sinput [%d-1:0]   seed, \n" % (indent, lfsr_len)
-    code += "%soutput [%d-1:0]  out\n" % (indent, len(rand_out))
+    code += "%soutput [%d-1:0]  lfsr\n" % (indent, lfsr_len)
     code += "%s);\n\n" % (indent)
     
-    for ww in range(len(rand_out)):
-        code += "%sassign out[%d] = seed[%d]" %(indent, ww, list(rand_out[ww])[0])
-        for ii in range(1,len(rand_out[ww])):
-            code += " ^ seed[%d]" %(list(rand_out[ww])[ii])
+    code += "%slogic    fb; // feedback bit\n" %(indent)
+    code += "%sassign fb = lsfr[%d]" %(indent, one_indices[0])
+
+    if (len(one_indices)>1):
+        for oo in one_indices[1:]:
+            code += " ^ lsfr[%d]" %(oo)
             
-        code += ";\n"    
+    code += ";\n\n"
+    
+    code += "%salways @(posedge clk) begin\n" %(indent)
+    code += "%sif (rst) begin\n" %(indent*2)
+    code += "%slfsr <= seed;\n" %(indent*3)
+    code += "%send\n" %(indent*2)
+    code += "%selse begin\n" %(indent*2)
+    code += "%slfsr <= {lsfr[%d:0], fb};\n" %(indent*3, lfsr_len-2)
+    code += "%send\n" %(indent*2)
+    code += "%send\n" %(indent)
     
     code += "\nendmodule\n"
     
@@ -145,9 +127,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-g", "--gen_poly", required=True,
         help="generation polynomial in binary representation. For example: 0b110110 (or 0x36) is for x^6 + x^5 + x^3 + x^2 + 1")
-    ap.add_argument("-w", "--out_width", required=False, type=int,
-        default=16,
-        help="the bitwidth of output")    
     ap.add_argument("-p", "--prefix", required=False,
         default="vgen",
         help="prefix of the name of the generated Verilog module")
@@ -156,9 +135,7 @@ def main():
 
     lfsr_len, one_indices = parse_polynomial(gen_poly = args['gen_poly'])
 
-    rand_out = gen_random(lfsr_len, one_indices, args['out_width'])
-    
-    gen_verilog(rand_out, lfsr_len, one_indices, args['prefix'])
+    gen_verilog(lfsr_len, one_indices, args['prefix'])
     
     
 if __name__ == '__main__':
