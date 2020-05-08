@@ -145,7 +145,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("-g", "--gen_poly", required=True,
         help="generation polynomial in binary representation. For example: 0b110110 (or 0x36) is for x^6 + x^5 + x^3 + x^2 + 1")
-    ap.add_argument("-w", "--out_width", required=False, type=int,
+    ap.add_argument("-w", "--out_width", required=True, type=int,
         default=16,
         help="the bitwidth of output")    
     ap.add_argument("-p", "--prefix", required=False,

@@ -92,8 +92,8 @@ def gen_verilog(lfsr_len, one_indices, prefix):
     code += "%sinput    clk,\n" % (indent)
     code += "%sinput    rst,\n\n" % (indent)
     
-    code += "%sinput [%d-1:0]   seed, \n" % (indent, lfsr_len)
-    code += "%soutput [%d-1:0]  lfsr\n" % (indent, lfsr_len)
+    code += "%sinput [%d-1:0]           seed, \n" % (indent, lfsr_len)
+    code += "%soutput logic [%d-1:0]    lfsr\n" % (indent, lfsr_len)
     code += "%s);\n\n" % (indent)
     
     code += "%slogic    fb; // feedback bit\n" %(indent)
