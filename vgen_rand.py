@@ -92,11 +92,11 @@ def gen_random(lfsr_len, one_indices, rand_wd):
      
     return rand_out
      
-def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
+def gen_verilog(rand_out, lfsr_len, one_indices, prefix, suffix):
     """ generate the Verilog module file
     """
     
-    bin_str = ''
+    bin_str = '0b'
     poly_str = ''
     for ii in range(lfsr_len-1,-1,-1):
         if ii in one_indices:
@@ -107,7 +107,12 @@ def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
     
     poly_str += '1' # implicit one
     
-    filename = "%s_rand_%dx%d_%s.v" % (prefix, lfsr_len, len(rand_out), bin_str)
+    if (suffix=="hex"):
+        suffix_str = hex(eval(bin_str))
+    else:
+        suffix_str = bin_str
+    
+    filename = "%s_rand_%d_%d_%s.v" % (prefix, lfsr_len, len(rand_out), suffix_str)
     
     f=open(filename, 'w')
     
@@ -120,7 +125,7 @@ def gen_verilog(rand_out, lfsr_len, one_indices, prefix):
     code += "///// based on the LFSR polynomial: %s \n" % (poly_str)
     code += "/"*80 + "\n"
     
-    code += "module %s_rand_%dx%d_%s (\n" % (prefix, lfsr_len, len(rand_out), bin_str)
+    code += "module %s_rand_%d_%d_%s (\n" % (prefix, lfsr_len, len(rand_out), suffix_str)
     code += "%sinput [%d-1:0]   seed, \n" % (indent, lfsr_len)
     code += "%soutput [%d-1:0]  out\n" % (indent, len(rand_out))
     code += "%s);\n\n" % (indent)
@@ -151,6 +156,9 @@ def main():
     ap.add_argument("-p", "--prefix", required=False,
         default="vgen",
         help="prefix of the name of the generated Verilog module")
+    ap.add_argument("-s", "--suffix", required=False,
+        default="hex",
+        help="suffix of the name of the generated Verilog module")
     
     args = vars(ap.parse_args())
 
@@ -158,7 +166,7 @@ def main():
 
     rand_out = gen_random(lfsr_len, one_indices, args['out_width'])
     
-    gen_verilog(rand_out, lfsr_len, one_indices, args['prefix'])
+    gen_verilog(rand_out, lfsr_len, one_indices, args['prefix'], args['suffix'])
     
     
 if __name__ == '__main__':

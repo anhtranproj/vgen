@@ -60,11 +60,11 @@ def parse_polynomial(gen_poly):
     return lfsr_len, one_indices    
     
 
-def gen_verilog(lfsr_len, one_indices, prefix):
+def gen_verilog(lfsr_len, one_indices, prefix, suffix):
     """ generate the Verilog module file
     """
     
-    bin_str = ''
+    bin_str = '0b'
     poly_str = ''
     for ii in range(lfsr_len-1,-1,-1):
         if ii in one_indices:
@@ -74,8 +74,13 @@ def gen_verilog(lfsr_len, one_indices, prefix):
             bin_str += '0'
     
     poly_str += '1' # implicit one
-    
-    filename = "%s_lfsr_%d_%s.v" % (prefix, lfsr_len, bin_str)
+
+    if (suffix=="hex"):
+        suffix_str = hex(eval(bin_str))
+    else:
+        suffix_str = bin_str
+        
+    filename = "%s_lfsr_%d_%s.v" % (prefix, lfsr_len, suffix_str)
     
     f=open(filename, 'w')
     
@@ -88,7 +93,7 @@ def gen_verilog(lfsr_len, one_indices, prefix):
     code += "///// based on the LFSR polynomial: %s \n" % (poly_str)
     code += "/"*80 + "\n"
     
-    code += "module %s_lfsr_%d_%s (\n" % (prefix, lfsr_len, bin_str)
+    code += "module %s_lfsr_%d_%s (\n" % (prefix, lfsr_len, suffix_str)
     code += "%sinput    clk,\n" % (indent)
     code += "%sinput    rst,\n\n" % (indent)
     
@@ -130,12 +135,15 @@ def main():
     ap.add_argument("-p", "--prefix", required=False,
         default="vgen",
         help="prefix of the name of the generated Verilog module")
+    ap.add_argument("-s", "--suffix", required=False,
+        default="hex",
+        help="suffix of the name of the generated Verilog module")
     
     args = vars(ap.parse_args())
 
     lfsr_len, one_indices = parse_polynomial(gen_poly = args['gen_poly'])
 
-    gen_verilog(lfsr_len, one_indices, args['prefix'])
+    gen_verilog(lfsr_len, one_indices, args['prefix'], args['suffix'])
     
     
 if __name__ == '__main__':
